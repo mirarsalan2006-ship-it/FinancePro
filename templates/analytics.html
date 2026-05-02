@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Detailed Analytics{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    
+    <!-- Chart 1: Net Cash Flow (Line) -->
+    <div class="pro-card glass" style="margin: 0;">
+        <div class="pro-card-header"><h2><i data-lucide="trending-up" width="18"></i> Net Cash Flow (6 Months)</h2></div>
+        <div class="pro-card-body" style="height: 350px; display: flex; justify-content: center; align-items: center;">
+            {% if trend_data %}<canvas id="trendChart"></canvas>{% else %}<p style="color: var(--text-muted);">Not enough data yet.</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- Chart 2: Income vs Expense (Grouped Bar) -->
+    <div class="pro-card glass" style="margin: 0;">
+        <div class="pro-card-header"><h2><i data-lucide="bar-chart-2" width="18"></i> Income vs Expenses (6 Months)</h2></div>
+        <div class="pro-card-body" style="height: 350px; display: flex; justify-content: center; align-items: center;">
+            {% if monthly_breakdown.labels %}<canvas id="monthlyChart"></canvas>{% else %}<p style="color: var(--text-muted);">Not enough data yet.</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- Chart 3: Expense Categories (Doughnut) -->
+    <div class="pro-card glass" style="margin: 0;">
+        <div class="pro-card-header"><h2><i data-lucide="pie-chart" width="18"></i> Expense Categories ({{ selected_month if selected_month else 'All Time' }})</h2></div>
+        <div class="pro-card-body" style="height: 350px; display: flex; justify-content: center; align-items: center;">
+            {% if category_totals %}<canvas id="expenseChart"></canvas>{% else %}<p style="color: var(--text-muted);">No expenses to chart.</p>{% endif %}
+        </div>
+    </div>
+
+    <!-- Chart 4: Top Expenses Leaderboard (List) -->
+    <div class="pro-card glass" style="margin: 0;">
+        <div class="pro-card-header"><h2><i data-lucide="alert-circle" width="18" style="color: var(--warning);"></i> Top 5 Expenses ({{ selected_month if selected_month else 'All Time' }})</h2></div>
+        <div class="pro-card-body">
+            {% if top_expenses %}
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    {% for t in top_expenses %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--surface-hover); border-radius: 8px; border: 1px solid var(--border);">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-weight: 600; font-size: 14px; color: var(--text-main);">{{ t.category }}</span>
+                                <span style="font-size: 12px; color: var(--text-muted);">{{ t.description }} &bull; {{ t.date }}</span>
+                            </div>
+                            <span class="mono" style="font-weight: 700; font-size: 15px; color: var(--danger);">
+                                -{{ currency_symbol }}{{ "%.2f"|format(t.amount) }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="height: 100%; display: flex; justify-content: center; align-items: center;">
+                    <p style="color: var(--text-muted);">No expenses logged.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Hidden payload for JS -->
+<script id="chart-data" type="application/json">{{ category_totals | tojson }}</script>
+<script id="trend-data" type="application/json">{{ trend_data | tojson }}</script>
+<script id="monthly-data" type="application/json">{{ monthly_breakdown | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#94A3B8' : '#64748B';
+        const gridColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.6)';
+        const tooltipConfig = { backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 12, cornerRadius: 8, titleFont: {family: 'Inter'}, bodyFont: {family: 'Inter'} };
+
+        // 1. Doughnut Chart (Categories)
+        try {
+            const rawCatData = document.getElementById('chart-data').textContent;
+            const categoryData = JSON.parse(rawCatData);
+            if (Object.keys(categoryData).length > 0) {
+                new Chart(document.getElementById('expenseChart').getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(categoryData),
+                        datasets: [{ data: Object.values(categoryData), backgroundColor: ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#E11D48', '#8B5CF6', '#14B8A6'], borderWidth: 0, hoverOffset: 6 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '78%', plugins: { legend: { position: 'right', labels: { color: textColor, font: { family: 'Inter', size: 12 }, usePointStyle: true, padding: 15 } }, tooltip: tooltipConfig } }
+                });
+            }
+        } catch(e){}
+
+        // 2. Line Chart (Net Cash Flow Trend)
+        try {
+            const rawTrendData = document.getElementById('trend-data').textContent;
+            const trendData = JSON.parse(rawTrendData);
+            if (Object.keys(trendData).length > 0) {
+                const ctxTrend = document.getElementById('trendChart').getContext('2d');
+                let gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(79, 70, 229, 0.4)'); gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+                new Chart(ctxTrend, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(trendData),
+                        datasets: [{ label: 'Net Cash Flow', data: Object.values(trendData), borderColor: '#4F46E5', backgroundColor: gradient, borderWidth: 3, pointBackgroundColor: isDark ? '#1E293B' : '#FFFFFF', pointBorderColor: '#4F46E5', pointBorderWidth: 2, pointRadius: 4, fill: true, tension: 0.4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tooltipConfig }, scales: { x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', size: 11 } } }, y: { grid: { color: gridColor, borderDash: [5, 5] }, ticks: { color: textColor, font: { family: 'Inter', size: 11 } } } } }
+                });
+            }
+        } catch(e){}
+
+        // 3. NEW: Grouped Bar Chart (Income vs Expense)
+        try {
+            const rawMonthlyData = document.getElementById('monthly-data').textContent;
+            const monthlyData = JSON.parse(rawMonthlyData);
+            if (monthlyData.labels.length > 0) {
+                const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+                new Chart(ctxMonthly, {
+                    type: 'bar',
+                    data: {
+                        labels: monthlyData.labels,
+                        datasets: [
+                            { label: 'Income', data: monthlyData.income, backgroundColor: '#10B981', borderRadius: 4 },
+                            { label: 'Expenses', data: monthlyData.expense, backgroundColor: '#E11D48', borderRadius: 4 }
+                        ]
+                    },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, 
+                        plugins: { legend: { position: 'top', labels: { color: textColor, font: { family: 'Inter', size: 12 }, usePointStyle: true } }, tooltip: tooltipConfig }, 
+                        scales: { 
+                            x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', size: 11 } } }, 
+                            y: { grid: { color: gridColor, borderDash: [5, 5] }, ticks: { color: textColor, font: { family: 'Inter', size: 11 } } } 
+                        } 
+                    }
+                });
+            }
+        } catch(e){}
+    });
+</script>
+{% endblock %}

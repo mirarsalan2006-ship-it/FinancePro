@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Transactions Log{% endblock %}
+
+{% block content %}
+<div class="pro-card glass" style="margin: 0;">
+    <div class="pro-card-header" style="flex-wrap: wrap; gap: 16px;">
+        <form method="GET" action="{{ url_for('transactions') }}" style="margin: 0; position: relative; width: 100%; max-width: 350px;">
+            <input type="hidden" name="month" value="{{ selected_month }}">
+            <i data-lucide="search" width="16" style="position: absolute; left: 12px; top: 12px; color: var(--text-muted);"></i>
+            <input type="text" name="q" value="{{ search_query }}" class="input-pro" placeholder="Search categories or descriptions..." style="padding-left: 36px; border-radius: 20px;">
+        </form>
+        <!-- The export button now triggers a PDF download -->
+        <a href="{{ url_for('export_transactions', month=selected_month, q=search_query) }}" class="btn btn-ghost" style="border: 1px solid var(--border); color: var(--primary);">
+            <i data-lucide="file-text" width="16"></i> Download PDF
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th style="text-align: right;">Amount</th><th style="text-align: right;">Action</th></tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td class="mono" style="color: var(--text-muted); font-size: 13px;">{{ t.date }}</td>
+                    <td>{% if t.type == 'income' %}<span class="badge badge-success">Income</span>{% else %}<span class="badge badge-neutral">Expense</span>{% endif %}</td>
+                    <td style="font-weight: 500;">{{ t.category }}</td>
+                    <td>{{ t.description }}</td>
+                    <td class="mono {% if t.type == 'income' %}text-income{% else %}text-expense{% endif %}" style="text-align: right; font-weight: 600;">
+                        {% if t.type == 'income' %}+{% else %}-{% endif %}{{ currency_symbol }}{{ "%.2f"|format(t.amount) }}
+                    </td>
+                    <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px; align-items: center; border-bottom: none;">
+                        <a href="{{ url_for('edit_transaction', index=t.id) }}" class="btn btn-ghost" style="padding: 6px; border: 1px solid transparent;"><i data-lucide="edit-2" width="14"></i></a>
+                        <form method="POST" action="{{ url_for('delete_transaction', index=t.id) }}" style="margin: 0;">
+                            <button type="submit" class="btn btn-ghost" style="padding: 6px; color: var(--danger); border: 1px solid transparent;"><i data-lucide="trash-2" width="14"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="text-align: center; padding: 60px; color: var(--text-muted);">No transactions match your search.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if total_pages > 1 %}
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: center; gap: 16px; align-items: center;">
+        {% if page > 1 %}<a href="?page={{ page-1 }}&q={{ search_query }}&month={{ selected_month }}" class="btn btn-ghost" style="border: 1px solid var(--border);"><i data-lucide="chevron-left" width="16"></i></a>{% endif %}
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}<a href="?page={{ page+1 }}&q={{ search_query }}&month={{ selected_month }}" class="btn btn-ghost" style="border: 1px solid var(--border);"><i data-lucide="chevron-right" width="16"></i></a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

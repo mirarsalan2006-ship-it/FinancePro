@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Finance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root {
+            --primary: #4F46E5; --primary-hover: #4338CA; --primary-light: #EEF2FF;
+            --danger: #E11D48; --success: #10B981; --warning: #F59E0B; --info: #0EA5E9; --purple: #8B5CF6;
+            --bg-body: #F8FAFC; --bg-sidebar: #0F172A; --surface-rgb: 255, 255, 255; --surface-hover: #F1F5F9;
+            --text-main: #0F172A; --text-muted: #64748B; --text-sidebar: #94A3B8; --border: rgba(226, 232, 240, 0.8);
+            --radius-md: 12px; --radius-lg: 16px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        }
+        body.dark-mode {
+            --bg-body: #020617; --bg-sidebar: #020617; --surface-rgb: 30, 41, 59; --surface-hover: rgba(51, 65, 85, 0.5);
+            --text-main: #F8FAFC; --text-muted: #94A3B8; --border: rgba(51, 65, 85, 0.8); --primary-light: #1E1B4B;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; position: relative;}
+        
+        .ambient-glow { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+        .ambient-glow::before, .ambient-glow::after { content: ''; position: absolute; width: 50vw; height: 50vw; border-radius: 50%; filter: blur(90px); opacity: 0.5; animation: float 15s infinite alternate ease-in-out; }
+        .ambient-glow::before { top: -10%; left: -10%; background: radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, transparent 70%); }
+        .ambient-glow::after { bottom: -10%; right: -10%; background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%); animation-delay: -7s; }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(5%, 5%) scale(1.1); } }
+
+        .fill-good { background-color: var(--success); } .fill-warn { background-color: var(--warning); }
+        .fill-danger { background-color: var(--danger); } .fill-info { background-color: var(--info); } .fill-purple { background-color: var(--purple); }
+        .text-income { color: var(--success); } .text-expense { color: var(--text-main); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        h2 { font-size: 15px; font-weight: 600; color: var(--text-main); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;}
+        
+        .app-container { display: flex; width: 100%; height: 100%; z-index: 1; }
+        .sidebar { width: 260px; background-color: var(--bg-sidebar); color: white; display: flex; flex-direction: column; padding: 24px; transition: transform 0.3s ease; z-index: 30;}
+        .sidebar-brand { font-size: 20px; font-weight: 700; margin-bottom: 40px; display: flex; align-items: center; gap: 10px;}
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: var(--text-sidebar); text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; transition: 0.2s; }
+        .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
+        .nav-link:hover:not(.active) { color: white; background: rgba(255,255,255,0.05); }
+        .sidebar-user { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;}
+        
+        .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .glass { background: rgba(var(--surface-rgb), 0.75); backdrop-filter: blur(20px); border: 1px solid var(--border); }
+        
+        .topbar { height: 70px; padding: 0 32px; display: flex; justify-content: space-between; align-items: center; z-index: 20; border-bottom: 1px solid var(--border);}
+        .topbar-controls { display: flex; align-items: center; gap: 16px; }
+        .menu-toggle { display: none; background: none; border: none; color: var(--text-main); cursor: pointer; }
+        
+        .main-content { flex: 1; overflow-y: auto; padding: 32px; scroll-behavior: smooth; }
+        
+        select, input { background: rgba(var(--surface-rgb), 0.5); color: var(--text-main); border: 1px solid var(--border); backdrop-filter: blur(10px);}
+        .input-pro { padding: 10px 14px; border-radius: 8px; font-size: 14px; outline: none; width: 100%; }
+        .input-pro:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); background: rgba(var(--surface-rgb), 1); }
+        
+        .btn { padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: var(--text-muted); }
+        .btn-ghost:hover { background: var(--surface-hover); color: var(--text-main); }
+        .btn-icon { width: 38px; height: 38px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;}
+        
+        .pro-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 24px;}
+        .pro-card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .pro-card-body { padding: 24px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 14px 24px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 16px 24px; font-size: 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tr:last-child td { border-bottom: none; }
+        
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-neutral { background: var(--surface-hover); color: var(--text-muted); border: 1px solid var(--border); }
+        
+        .progress-container { margin-bottom: 16px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; font-weight: 500; color: var(--text-main); }
+        .progress-bar { height: 6px; background-color: var(--surface-hover); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 8px; }
+        
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100%; transform: translateX(-100%); }
+            .sidebar.show { transform: translateX(0); }
+            .menu-toggle { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <div class="app-container">
+        <!-- Centralized Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand"><i data-lucide="hexagon" style="color: var(--primary);"></i>FinancePro</div>
+            
+            <div style="flex: 1;">
+                <p style="color: var(--text-sidebar); font-size: 12px; text-transform: uppercase; font-weight: 600; margin-bottom: 16px; padding-left: 14px;">Menu</p>
+                <!-- Dynamic Highlighting based on current route! -->
+                <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"><i data-lucide="layout-dashboard" width="18"></i> Dashboard</a>
+                <a href="{{ url_for('transactions') }}" class="nav-link {% if request.endpoint == 'transactions' %}active{% endif %}"><i data-lucide="list" width="18"></i> Transactions</a>
+                <a href="{{ url_for('analytics') }}" class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}"><i data-lucide="pie-chart" width="18"></i> Analytics</a>
+                <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}"><i data-lucide="settings" width="18"></i> Settings</a>
+            </div>
+
+            <div class="sidebar-user">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">{{ username[0].upper() }}</div>
+                    <div><p style="font-size: 14px; font-weight: 600; line-height: 1;">{{ username.title() }}</p></div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn btn-ghost" style="color: var(--danger); padding: 8px;"><i data-lucide="log-out" width="16"></i></a>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <!-- Centralized Topbar -->
+            <header class="topbar glass">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button class="menu-toggle" id="menuToggle"><i data-lucide="menu"></i></button>
+                    <!-- View Title Injected Here -->
+                    <h1 style="font-size: 18px; color: var(--text-main); font-weight: 600;">{% block title %}Overview{% endblock %}</h1>
+                </div>
+                <div class="topbar-controls">
+                    <button class="btn btn-icon glass" id="themeToggle" onclick="toggleTheme()"><i id="themeIcon" data-lucide="sun" width="18"></i></button>
+                    <!-- Empty action means it submits to whatever page you are currently on! -->
+                    <form action="{{ url_for('set_currency') }}" method="POST" style="margin: 0;">
+                        <select name="currency" class="input-pro glass" style="width: auto; padding: 8px 30px 8px 12px; border-radius: 20px;" onchange="this.form.submit()">
+                            {% for code, sym in currencies.items() %}
+                                <option value="{{ code }}" {% if code == user_currency %}selected{% endif %}>{{ code }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <form method="GET" action="" style="margin: 0;">
+                        {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                        <select name="month" class="input-pro glass" style="width: auto; padding: 8px 30px 8px 12px; border-radius: 20px;" onchange="this.form.submit()">
+                            <option value="">All Time</option>
+                            {% for m in all_months %}
+                                <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <!-- SPECIFIC PAGE CONTENT IS INJECTED HERE -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const menuToggle = document.getElementById('menuToggle');
+        if(menuToggle) menuToggle.addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('show'); });
+
+        function toggleTheme() {
+            const icon = document.getElementById('themeIcon');
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                if (icon) { icon.setAttribute('data-lucide', 'moon'); lucide.createIcons(); }
+            } else {
+                localStorage.setItem('theme', 'light');
+                if (icon) { icon.setAttribute('data-lucide', 'sun'); lucide.createIcons(); }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const icon = document.getElementById('themeIcon');
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                if (icon) { icon.setAttribute('data-lucide', 'moon'); lucide.createIcons(); }
+            }
+            setTimeout(() => {
+                document.querySelectorAll('.progress-fill').forEach(bar => { bar.style.width = bar.getAttribute('data-width') + '%'; });
+            }, 100);
+        });
+    </script>
+    
+    <!-- PAGE SPECIFIC SCRIPTS INJECTED HERE -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

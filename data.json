@@ -1,0 +1,92 @@
+{
+    "users": {
+        "arsalanmir1": {
+            "password_hash": "scrypt:32768:8:1$oed8jDguBuuS2SPM$f306ce633bc385ba959c981041bb0608d639bfde017744ae48d77e9b888b19acedd71006d18d95202894f88b6fb56563b7e21a2908b36f554a76b8fa39d47462",
+            "currency": "INR",
+            "budgets": {},
+            "transactions": []
+        },
+        "arnoor": {
+            "password_hash": "scrypt:32768:8:1$A204FK2otTYfsc7T$a2d507ed93b4934679cb347b7541b7a9a6fa0be047650cb51fc293a968eaea4dd37c7ad6be8ee61b1eea96593f1987c7c3ecf71c72007407882262c756f49f39",
+            "currency": "INR",
+            "budgets": {
+                "Savings per month": 5000.0
+            },
+            "transactions": [
+                {
+                    "type": "income",
+                    "amount": 25000.0,
+                    "category": "Salary",
+                    "description": "Salary",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "expense",
+                    "amount": 7000.0,
+                    "category": "Rent",
+                    "description": "Rent for house",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "expense",
+                    "amount": 4000.0,
+                    "category": "Groceries",
+                    "description": "Groceries",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "expense",
+                    "amount": 2000.0,
+                    "category": "Food",
+                    "description": "Food",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "expense",
+                    "amount": 5000.0,
+                    "category": "Shopping",
+                    "description": "Shopping",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "expense",
+                    "amount": 3000.0,
+                    "category": "Savings for Car",
+                    "description": "Savings",
+                    "date": "2026-05-01"
+                },
+                {
+                    "type": "income",
+                    "amount": 5000.0,
+                    "category": "Rent",
+                    "description": "Received",
+                    "date": "2026-05-02"
+                },
+                {
+                    "type": "expense",
+                    "amount": 2000.0,
+                    "category": "Bike",
+                    "description": "Servicing",
+                    "date": "2026-05-02"
+                }
+            ],
+            "subscriptions": [
+                {
+                    "name": "Recharge",
+                    "amount": 349.0
+                },
+                {
+                    "name": "TV ",
+                    "amount": 699.0
+                }
+            ],
+            "savings_goals": {
+                "Car": {
+                    "target": 200000.0,
+                    "saved": 3000.0
+                }
+            },
+            "debts": {}
+        }
+    }
+}

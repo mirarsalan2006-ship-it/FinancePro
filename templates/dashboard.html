@@ -1,0 +1,312 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<style>
+    /* Import Flatpickr CSS */
+    @import url("https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css");
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+    .kpi-card { border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 8px; }
+    .kpi-label { font-size: 13px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 6px;}
+    .kpi-value { font-size: 32px; font-weight: 700; color: var(--text-main); margin-top: 4px;}
+    .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;}
+    @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    
+    /* --- Glassmorphism Calendar Theme Overrides --- */
+    .flatpickr-calendar.inline {
+        background: rgba(var(--surface-rgb), 0.4);
+        box-shadow: none;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    /* Force internal containers to expand */
+    .flatpickr-innerContainer, .flatpickr-rContainer, .dayContainer, .flatpickr-days {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+    .flatpickr-months .flatpickr-month, 
+    .flatpickr-current-month .flatpickr-monthDropdown-months,
+    .flatpickr-current-month input.cur-year {
+        background: transparent !important;
+        color: var(--text-main) !important;
+        font-size: 18px;
+        padding-bottom: 10px;
+    }
+    .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month {
+        fill: var(--text-main) !important;
+        color: var(--text-main) !important;
+        top: 15px !important;
+    }
+    /* Stretch the days to fill exactly 1/7th of the screen each */
+    span.flatpickr-weekday { 
+        color: var(--text-muted) !important; 
+        font-weight: 600; 
+        max-width: none !important;
+        width: 14.28% !important; 
+    }
+    .flatpickr-day { 
+        color: var(--text-main); 
+        border-radius: 8px; 
+        transition: 0.2s; 
+        max-width: none !important;
+        width: 14.28% !important;
+        height: 52px !important;         /* Elongates the buttons */
+        line-height: 52px !important;    /* Centers the text in taller buttons */
+        font-size: 15px;
+    }
+    .flatpickr-day:hover { background: var(--surface-hover); border-color: var(--border); }
+    .flatpickr-day.selected { background: var(--primary) !important; border-color: var(--primary) !important; color: white; font-weight: 600;}
+    .flatpickr-day.today { border-color: var(--primary); font-weight: 700; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: var(--text-muted) !important; opacity: 0.25; }
+</style>
+
+<!-- NEW: Smart Insights Banner -->
+{% if insights %}
+<div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+    {% for insight in insights %}
+    <div style="background: rgba(var(--surface-rgb), 0.8); backdrop-filter: blur(10px); border-left: 4px solid {{ insight.color }}; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm);">
+        <i data-lucide="{{ insight.icon }}" style="color: {{ insight.color }};" width="20"></i>
+        <p style="font-size: 14px; font-weight: 500; margin: 0;">{{ insight.msg }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="kpi-grid">
+    <div class="kpi-card glass">
+        <span class="kpi-label"><i data-lucide="arrow-down-left" width="16" style="color: var(--success);"></i> Total Income</span>
+        <span class="kpi-value mono" style="color: var(--success);">{{ currency_symbol }}{{ "%.2f"|format(total_income) }}</span>
+    </div>
+    <div class="kpi-card glass">
+        <span class="kpi-label"><i data-lucide="arrow-up-right" width="16" style="color: var(--danger);"></i> Total Expenses</span>
+        <span class="kpi-value mono" style="color: var(--text-main);">{{ currency_symbol }}{{ "%.2f"|format(total_expense) }}</span>
+    </div>
+    <div class="kpi-card glass">
+        <span class="kpi-label"><i data-lucide="wallet" width="16" style="color: var(--primary);"></i> Net Balance</span>
+        <span class="kpi-value mono" style="color: var(--primary);">{{ currency_symbol }}{{ "%.2f"|format(net_balance) }}</span>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- LEFT COLUMN -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header"><h2><i data-lucide="plus-circle" width="18" style="color: var(--primary);"></i> Log Transaction</h2></div>
+            <div class="pro-card-body">
+                <form method="POST" action="/" style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- NEW: Inline Full Calendar -->
+                    <div style="display: flex; justify-content: center; width: 100%;">
+                        <!-- Hidden input stores the date for Flask to read -->
+                        <input type="hidden" name="date" id="hiddenDateInput" required>
+                        <!-- The visual calendar attaches here -->
+                        <div id="inlineCalendar"></div>
+                    </div>
+                    
+                    <!-- Form Inputs Row -->
+                    <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 110px;">
+                            <select name="type" class="input-pro" required>
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 110px;"><input type="number" step="0.01" name="amount" class="input-pro" placeholder="Amount" required></div>
+                        <div style="flex: 2; min-width: 130px;"><input type="text" name="category" class="input-pro" placeholder="Category" required></div>
+                        <div style="flex: 2; min-width: 130px;"><input type="text" name="description" class="input-pro" placeholder="Description" required></div>
+                        <div><button type="submit" class="btn btn-primary" style="width: 100%;"><i data-lucide="check" width="16"></i> Add</button></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header">
+                <h2><i data-lucide="history" width="18"></i> Recent Activity</h2>
+                <a href="{{ url_for('transactions') }}" style="font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 500;">View All &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <tbody>
+                        {% for t in recent_transactions %}
+                        <tr>
+                            <td class="mono" style="color: var(--text-muted); font-size: 13px; width: 100px;">{{ t.date }}</td>
+                            <td style="font-weight: 500;">{{ t.category }}</td>
+                            <td class="mono {% if t.type == 'income' %}text-income{% else %}text-expense{% endif %}" style="text-align: right; font-weight: 600;">
+                                {% if t.type == 'income' %}+{% else %}-{% endif %}{{ currency_symbol }}{{ "%.2f"|format(t.amount) }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-muted);">No activity yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header">
+                <h2><i data-lucide="calendar" width="18"></i> Fixed Bills</h2>
+                <strong class="mono" style="color: var(--danger); font-size: 15px;">{{ currency_symbol }}{{ "%.2f"|format(total_subs) }}<span style="font-size: 11px; color: var(--text-muted); font-family: 'Inter';">/mo</span></strong>
+            </div>
+            <div class="pro-card-body">
+                <div style="max-height: 150px; overflow-y: auto; padding-right: 8px;">
+                    {% for sub in subscriptions %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                            <span style="font-weight: 500; font-size: 14px;">{{ sub.name }}</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="mono" style="font-size: 14px; color: var(--text-muted);">{{ currency_symbol }}{{ "%.2f"|format(sub.amount) }}</span>
+                                <form method="POST" action="{{ url_for('delete_sub', index=sub.id) }}" style="margin:0;"><button type="submit" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x" width="14"></i></button></form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="/" style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                    <input type="text" name="sub_name" class="input-pro" placeholder="Netflix, Rent..." required style="flex: 1;">
+                    <input type="number" step="0.01" name="sub_amount" class="input-pro" placeholder="Cost" required style="width: 100px;">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px;"><i data-lucide="plus" width="16"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header"><h2><i data-lucide="target" width="18"></i> Budgets</h2></div>
+            <div class="pro-card-body">
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                    {% for cat, limit in budgets.items() %}
+                        {% set spent = category_totals.get(cat, 0)|float %}{% set safe_limit = limit|float %}
+                        {% set percent = 0 %}{% if safe_limit > 0 %}{% set percent = (spent / safe_limit * 100) %}{% endif %}
+                        {% set clean_percent = percent|round|int %}{% if clean_percent > 100 %}{% set clean_percent = 100 %}{% endif %}
+                        {% set color_class = 'fill-good' %}{% if percent >= 90 %}{% set color_class = 'fill-danger' %}{% elif percent >= 60 %}{% set color_class = 'fill-warn' %}{% endif %}
+                        
+                        <div class="progress-container">
+                            <div class="progress-header">
+                                <span>{{ cat }}</span>
+                                <span style="display: flex; gap: 10px; align-items: center;">
+                                    <span class="mono" style="color: var(--text-muted);">{{ currency_symbol }}{{ "%.0f"|format(spent) }} / {{ currency_symbol }}{{ safe_limit }}</span>
+                                    <form method="POST" action="{{ url_for('delete_budget', category=cat) }}" style="margin:0;"><button type="submit" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x" width="14"></i></button></form>
+                                </span>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill {{ color_class }}" data-width="{{ clean_percent }}"></div></div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="/" style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                    <input type="text" name="budget_category" class="input-pro" placeholder="Category" required style="flex: 1;">
+                    <input type="number" name="budget_amount" class="input-pro" placeholder="Limit" style="width: 80px;" required>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px;"><i data-lucide="plus" width="16"></i></button>
+                </form>
+            </div>
+        </div>
+
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header"><h2><i data-lucide="piggy-bank" width="18"></i> Savings Goals</h2></div>
+            <div class="pro-card-body">
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                    {% for goal_name, goal_data in savings_goals.items() %}
+                        {% set saved = goal_data.saved|float %}{% set target = goal_data.target|float %}
+                        {% set percent = 0 %}{% if target > 0 %}{% set percent = (saved / target * 100) %}{% endif %}
+                        {% set clean_percent = percent|round|int %}{% if clean_percent > 100 %}{% set clean_percent = 100 %}{% endif %}
+                        
+                        <div class="progress-container" style="margin-bottom: 24px;">
+                            <div class="progress-header" style="margin-bottom: 8px;">
+                                <span>{{ goal_name }} <span style="color: var(--text-muted); font-size: 11px;">({{ clean_percent }}%)</span></span>
+                                <span style="display: flex; gap: 12px; align-items: center;">
+                                    <span class="mono" style="color: var(--text-muted);">{{ currency_symbol }}{{ "%.0f"|format(saved) }} / {{ currency_symbol }}{{ "%.0f"|format(target) }}</span>
+                                    <form method="POST" action="{{ url_for('delete_goal', goal_name=goal_name) }}" style="margin:0;"><button type="submit" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x" width="14"></i></button></form>
+                                </span>
+                            </div>
+                            <div class="progress-bar" style="margin-bottom: 12px;"><div class="progress-fill fill-info" data-width="{{ clean_percent }}"></div></div>
+                            <form method="POST" action="/" style="display: flex; gap: 8px;">
+                                <input type="hidden" name="goal_name" value="{{ goal_name }}">
+                                <input type="number" step="0.01" name="add_to_goal" class="input-pro" placeholder="+ Deposit" required style="padding: 6px 10px; font-size: 13px;">
+                                <button type="submit" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--border);">Add</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="/" style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                    <input type="text" name="goal_name" class="input-pro" placeholder="Name" required style="flex: 1;">
+                    <input type="number" name="goal_target" class="input-pro" placeholder="Target" required style="width: 80px;">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px;"><i data-lucide="plus" width="16"></i></button>
+                </form>
+            </div>
+        </div>
+
+        <div class="pro-card glass" style="margin: 0;">
+            <div class="pro-card-header"><h2><i data-lucide="credit-card" width="18"></i> Debt Tracker</h2></div>
+            <div class="pro-card-body">
+                <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                    {% for debt_name, debt_data in debts.items() %}
+                        {% set principal = debt_data.principal|float %}{% set paid = debt_data.paid|float %}{% set rate = debt_data.rate|float %}
+                        {% set percent = 0 %}{% if principal > 0 %}{% set percent = (paid / principal * 100) %}{% endif %}
+                        {% set clean_percent = percent|round|int %}{% if clean_percent > 100 %}{% set clean_percent = 100 %}{% endif %}
+                        
+                        <div class="progress-container" style="margin-bottom: 24px;">
+                            <div class="progress-header" style="margin-bottom: 8px;">
+                                <span>{{ debt_name }} <span style="color: var(--danger); font-size: 10px; margin-left: 5px;">{{ rate }}% APR</span></span>
+                                <span style="display: flex; gap: 12px; align-items: center;">
+                                    <span class="mono" style="color: var(--text-muted);">{{ currency_symbol }}{{ "%.0f"|format(paid) }} / {{ currency_symbol }}{{ "%.0f"|format(principal) }}</span>
+                                    <form method="POST" action="{{ url_for('delete_debt', debt_name=debt_name) }}" style="margin:0;"><button type="submit" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x" width="14"></i></button></form>
+                                </span>
+                            </div>
+                            <div class="progress-bar" style="margin-bottom: 12px;"><div class="progress-fill fill-purple" data-width="{{ clean_percent }}"></div></div>
+                            <form method="POST" action="/" style="display: flex; gap: 8px;">
+                                <input type="hidden" name="debt_name" value="{{ debt_name }}">
+                                <input type="number" step="0.01" name="pay_debt" class="input-pro" placeholder="+ Pay Down" required style="padding: 6px 10px; font-size: 13px;">
+                                <button type="submit" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px; border: 1px solid var(--border);">Pay</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="/" style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; flex-wrap: wrap;">
+                    <input type="text" name="debt_name" class="input-pro" placeholder="Loan" required style="flex: 1; min-width: 90px;">
+                    <input type="number" name="debt_principal" class="input-pro" placeholder="Amount" required style="width: 80px;">
+                    <input type="number" step="0.1" name="debt_rate" class="input-pro" placeholder="APR%" required style="width: 70px;">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px;"><i data-lucide="plus" width="16"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Import Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // --- CALENDAR INITIALIZATION ---
+        const hiddenInput = document.getElementById("hiddenDateInput");
+        
+        flatpickr("#inlineCalendar", {
+            inline: true,              // Forces the calendar to be permanently open
+            defaultDate: "today",      // Pre-selects today's date
+            maxDate: "today",          // STRICTLY PREVENTS FUTURE DATES
+            onChange: function(selectedDates, dateStr, instance) {
+                // Whenever the user clicks a date, update the hidden form input
+                hiddenInput.value = dateStr;
+            }
+        });
+        
+        // Ensure hidden input has today's date loaded immediately before any clicks happen
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        hiddenInput.value = `${y}-${m}-${d}`;
+
+    });
+</script>
+{% endblock %}
